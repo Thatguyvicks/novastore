@@ -10,20 +10,20 @@ const cors = require("cors");
 
 const app = express();
 
-// ---------------- BASIC MIDDLEWARE ----------------
+/* ---------------- BASIC MIDDLEWARE ---------------- */
 app.use(express.json());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5500",
+    origin: process.env.FRONTEND_URL || "http://localhost:5000",
     credentials: true,
   })
 );
 
-// ---------------- EXPRESS SESSION (IMPORTANT) ----------------
+/* ---------------- SESSION ---------------- */
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "secret123",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -33,15 +33,20 @@ app.use(
   })
 );
 
-// ---------------- PASSPORT ----------------
+/* ---------------- PASSPORT ---------------- */
 app.use(passport.initialize());
 app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+
+      // MUST MATCH GOOGLE CONSOLE EXACTLY
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
         "http://localhost:5000/auth/google/callback",
@@ -52,10 +57,7 @@ passport.use(
   )
 );
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
-
-// ---------------- PRODUCTS ----------------
+/* ---------------- PRODUCTS ---------------- */
 const products = [
   { id: 1, name: "macbook pro m4", price: 4000, img: "/images/macbook-pro-m4.jpg" },
   { id: 2, name: "samsung z fold 7", price: 2000, img: "/images/z-fold-7.jpg" },
@@ -76,7 +78,7 @@ app.get("/api/products", (req, res) => {
   res.json(products);
 });
 
-// ---------------- AUTH ROUTES ----------------
+/* ---------------- AUTH ROUTES ---------------- */
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -84,9 +86,7 @@ app.get(
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/shop.html",
-  }),
+  passport.authenticate("google", { failureRedirect: "/shop.html" }),
   (req, res) => {
     res.redirect("/shop.html");
   }
@@ -108,11 +108,11 @@ app.get("/api/auth/status", (req, res) => {
   }
 });
 
-// ---------------- SERVE FRONTEND ----------------
+/* ---------------- SERVE FRONTEND ---------------- */
 app.use(express.static(path.join(__dirname, "../frontend")));
 app.use("/images", express.static(path.join(__dirname, "../frontend/images")));
 
-// ---------------- START SERVER ----------------
+/* ---------------- START SERVER ---------------- */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
