@@ -1,39 +1,28 @@
-// server.js
 require("dotenv").config();
-
 const express = require("express");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const session = require("express-session");
-const path = require("path");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
-/* ---------------- BASIC MIDDLEWARE ---------------- */
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://fabulous-dolphin-0b06c9.netlify.app";
+
+/* ---------- MIDDLEWARE ---------- */
 app.use(express.json());
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "novastore-production.up.railway.app",
-    credentials: true,
-  })
-);
-
-/* ---------------- SESSION ---------------- */
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret123",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: "lax",
-    },
+    cookie: { maxAge: 24*60*60*1000, sameSite: "none", secure: true },
   })
 );
 
-/* ---------------- PASSPORT ---------------- */
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -45,19 +34,13 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-
-      // MUST MATCH GOOGLE CONSOLE EXACTLY
-      callbackURL:
-        process.env.GOOGLE_CALLBACK_URL ||
-        "http://novastore-production.up.railway.app/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "https://novastore-production.up.railway.app/auth/google/callback"
     },
-    (accessToken, refreshToken, profile, done) => {
-      return done(null, profile);
-    }
+    (accessToken, refreshToken, profile, done) => done(null, profile)
   )
 );
 
-/* ---------------- PRODUCTS ---------------- */
+/* ---------- PRODUCTS ---------- */
 const products = [
   { id: 1, name: "macbook pro m4", price: 4000, img: "/images/macbook-pro-m4.jpg" },
   { id: 2, name: "samsung z fold 7", price: 2000, img: "/images/z-fold-7.jpg" },
@@ -74,46 +57,29 @@ const products = [
   { id: 13, name: "ugreen powerbank", price: 700, img: "/images/ugreen-powerbank.webp" }
 ];
 
-app.get("/api/products", (req, res) => {
-  res.json(products);
-});
+app.get("/api/products", (req, res) => res.json(products));
 
-/* ---------------- AUTH ROUTES ---------------- */
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+/* ---------- AUTH ROUTES ---------- */
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/shop.html" }),
-  (req, res) => {
-    res.redirect("/shop.html");
-  }
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/shop.html` }),
+  (req, res) => res.redirect(`${FRONTEND_URL}/shop.html`)
 );
 
 app.get("/logout", (req, res) => {
-  req.logout(() => {
-    req.session.destroy(() => {
-      res.redirect("/shop.html");
-    });
-  });
+  req.logout();
+  req.session.destroy(() => res.redirect(`${FRONTEND_URL}/shop.html`));
 });
 
 app.get("/api/auth/status", (req, res) => {
-  if (req.user) {
-    res.json({ loggedIn: true, user: req.user });
-  } else {
-    res.json({ loggedIn: false });
-  }
+  res.json(req.user ? { loggedIn: true, user: req.user } : { loggedIn: false });
 });
 
-/* ---------------- SERVE FRONTEND ---------------- */
+/* ---------- SERVE FRONTEND ---------- */
 app.use(express.static(path.join(__dirname, "../frontend")));
 app.use("/images", express.static(path.join(__dirname, "../frontend/images")));
 
-/* ---------------- START SERVER ---------------- */
+/* ---------- START SERVER ---------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
