@@ -15,7 +15,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5000",
+    origin: process.env.FRONTEND_URL || "novastore-production.up.railway.app",
     credentials: true,
   })
 );
@@ -49,7 +49,7 @@ passport.use(
       // MUST MATCH GOOGLE CONSOLE EXACTLY
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
-        "http://localhost:5000/auth/google/callback",
+        "http://novastore-production.up.railway.app/auth/google/callback",
     },
     (accessToken, refreshToken, profile, done) => {
       return done(null, profile);
