@@ -4,28 +4,40 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const session = require("express-session");
 const cors = require("cors");
-const path = require("path");
 
 const app = express();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://fabulous-dolphin-0b06c9.netlify.app";
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || "https://fabulous-dolphin-0b06c9.netlify.app";
 
 /* ---------- MIDDLEWARE ---------- */
 app.use(express.json());
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST"],
+  })
+);
 
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret123",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24*60*60*1000, sameSite: "none", secure: true },
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "none",
+      secure: true,
+    },
   })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
 
+/* ---------- PASSPORT ---------- */
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
@@ -34,9 +46,13 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || "https://novastore-production.up.railway.app/auth/google/callback"
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        "https://novastore-production.up.railway.app/auth/google/callback",
     },
-    (accessToken, refreshToken, profile, done) => done(null, profile)
+    (accessToken, refreshToken, profile, done) => {
+      return done(null, profile);
+    }
   )
 );
 
@@ -54,32 +70,50 @@ const products = [
   { id: 10, name: "playstation 5", price: 500, img: "/images/playstation-5.jpg" },
   { id: 11, name: "xbox series x", price: 400, img: "/images/xbox-series-x.png" },
   { id: 12, name: "samsung 40' tv", price: 300, img: "/images/samsung-40-tv.webp" },
-  { id: 13, name: "ugreen powerbank", price: 700, img: "/images/ugreen-powerbank.webp" }
+  { id: 13, name: "ugreen powerbank", price: 700, img: "/images/ugreen-powerbank.webp" },
 ];
 
-app.get("/api/products", (req, res) => res.json(products));
+app.get("/api/products", (req, res) => {
+  res.json(products);
+});
 
 /* ---------- AUTH ROUTES ---------- */
-app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 
-app.get("/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/shop.html` }),
-  (req, res) => res.redirect(`${FRONTEND_URL}/shop.html`)
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: `${FRONTEND_URL}/shop.html`,
+  }),
+  (req, res) => {
+    res.redirect(`${FRONTEND_URL}/shop.html`);
+  }
 );
 
 app.get("/logout", (req, res) => {
-  req.logout();
-  req.session.destroy(() => res.redirect(`${FRONTEND_URL}/shop.html`));
+  req.logout(err => {
+    if (err) {
+      return res.status(500).json({ error: "Logout failed" });
+    }
+    req.session.destroy(() => {
+      res.redirect(`${FRONTEND_URL}/shop.html`);
+    });
+  });
 });
 
 app.get("/api/auth/status", (req, res) => {
-  res.json(req.user ? { loggedIn: true, user: req.user } : { loggedIn: false });
+  if (req.user) {
+    res.json({ loggedIn: true, user: req.user });
+  } else {
+    res.json({ loggedIn: false });
+  }
 });
-
-/* ---------- SERVE FRONTEND ---------- */
-app.use(express.static(path.join(__dirname, "../frontend")));
-app.use("/images", express.static(path.join(__dirname, "../frontend/images")));
 
 /* ---------- START SERVER ---------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`✅ Backend running on port ${PORT}`)
+);
