@@ -121,7 +121,6 @@ const products = [
   { id: 10, name: "playstation 5", price: 500, img: "/images/playstation 5.jpg" },
   { id: 11, name: "xbox series x", price: 400, img: "/images/xbox series x.png" },
   { id: 12, name: "samsung 40 tv", price: 300, img: "/images/samsung 40' tv.webp" },
-  { id: 13, name: "ugreen powerbank", price: 700, img: "/images/ugreen powerbank.webp" },
 ];
 
 app.get("/api/products", (req, res) => {
